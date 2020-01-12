@@ -174,3 +174,4 @@ if __name__ == "__main__":
     ]
 
     scraper = Scraper(*targets)
+    scraper.run()

@@ -2,6 +2,7 @@ import requests
 import json
 import os
 import time
+from tqdm import tqdm
 from bs4 import BeautifulSoup
 
 
@@ -42,11 +43,13 @@ class Scraper:
         """
         self._scrape_queue = []
 
-        for url in self._abs_endpoints:
+        self._out("Creating scrape queue...\n")
+
+        for url in tqdm(self._abs_endpoints):
             req = requests.get(url)
 
             if not req.ok:
-                print(f"Failed to GET {url}. ({str(req.status_code)})")
+                self._out(f"Failed to GET {url}. ({str(req.status_code)})")
                 continue
 
             # Since we are accessing the generated (escaped) HTML of each
@@ -73,13 +76,18 @@ class Scraper:
         start_all_time = time.time()
 
         for scrapee in self._scrape_queue:
+            self._out(f"\nScraping {scrapee['url']}")
             start_time = time.time()
 
             current_page = 1
             items = []
 
+            _progress = tqdm(total=scrapee["page_count"])
+
             while current_page <= scrapee["page_count"]:
                 page_items = []
+
+                _progress.update(1)
 
                 req = requests.get(scrapee["url"], params={"page": current_page})
                 bs4 = self._bs4(self._unescape(req.text))
@@ -87,8 +95,6 @@ class Scraper:
                 values = [l.find_next_sibling(text=True) for l in bs4.find_all("h6", class_="specLabel")]
 
                 categories = scrapee["categories"]
-
-                page_items_length = (len(values) // len(categories))
 
                 for val_group in self._chunker(values, len(categories)):
                     page_items.append(dict(zip(categories, val_group)))
@@ -108,9 +114,9 @@ class Scraper:
                 # Don't append; page_items is a list
                 items += page_items
 
-                self._out(f"Scraped {str(page_items_length)} items from page {str(current_page)}")
-
                 current_page += 1
+
+            _progress.close()
 
             end_time = time.time() - start_time
 
@@ -133,7 +139,7 @@ class Scraper:
 
         end_all_time = time.time() - start_all_time
 
-        self._out(f"Finished scraping {str(len(self.endpoints))} endpoint(s) in {str(round(end_all_time))}s")
+        self._out(f"Finished scraping {str(len(self.endpoints))} endpoint(s) in {str(end_all_time // 60)}m ({str(round(end_all_time, 3))}s)")
 
     def run(self):
         """

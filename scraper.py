@@ -71,7 +71,7 @@ class Scraper:
         HTML and output it.
         """
         # We need a queue in order to scrape!
-        assert self._scrape_queue, "Scrape queue does not exist. Have any endpoints been specified?"
+        assert self._scrape_queue, "Scrape queue does not exist. Have any valid endpoints been specified?"
 
         start_all_time = time.time()
 

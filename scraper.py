@@ -4,6 +4,7 @@ import os
 import time
 from tqdm import tqdm
 from bs4 import BeautifulSoup
+from typing import List, Dict
 
 
 class Scraper:
@@ -26,23 +27,33 @@ class Scraper:
 
     _chunker = lambda self, seq, size: (seq[pos:pos + size] for pos in range(0, len(seq), size))
 
-    def __init__(self, *endpoints, output_dir="./data", console=True):
+    def __init__(self, *endpoints: str, output_dir: str = "./data", console: bool = True) -> None:
+        assert not self._block_check(), "You are blocked from accessing PCPartPicker. Try using a proxy instead."
+
         self.endpoints = endpoints
         self.output_dir = output_dir
         self.console = console
 
         self._abs_endpoints = [self._BASE_URL + e + "/fetch" for e in self.endpoints]
-        self._scrape_queue = None
+        self._scrape_queue: List[Dict]
 
-    def _create_scrape_queue(self):
+    def _block_check(self) -> bool:
+        req = requests.get("https://pcpartpicker.com")
+
+        blocked_message = "pcpartpicker is unavailable"
+
+        if blocked_message in req.text.lower():
+            return True
+
+        return False
+
+    def _create_scrape_queue(self) -> None:
         """
         Validate the endpoint, create a dictionary for each endpoint
         with its own text, page count (so we know know how many
         pages to scrape), and categories, and finally append to
         the scrape queue.
         """
-        self._scrape_queue = []
-
         self._out("Creating scrape queue...\n")
 
         for url in tqdm(self._abs_endpoints):
@@ -65,7 +76,7 @@ class Scraper:
 
             self._scrape_queue.append({"url": url, "categories": [c for c in reversed(categories)], "page_count": int(page_count)})
 
-    def _scrape(self):
+    def _scrape(self) -> None:
         """
         Get the data from our generated scrape queue, scrape the
         HTML and output it.
@@ -80,12 +91,12 @@ class Scraper:
             start_time = time.time()
 
             current_page = 1
-            items = []
+            items: List[Dict]
 
             _progress = tqdm(total=scrapee["page_count"])
 
             while current_page <= scrapee["page_count"]:
-                page_items = []
+                page_items: List[Dict]
 
                 _progress.update(1)
 
@@ -141,7 +152,7 @@ class Scraper:
 
         self._out(f"Finished scraping {str(len(self.endpoints))} endpoint(s) in {str(end_all_time // 60)}m ({str(round(end_all_time, 3))}s)")
 
-    def run(self):
+    def run(self) -> None:
         """
         Run the scraper.
         """

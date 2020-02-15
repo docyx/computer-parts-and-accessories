@@ -4,4 +4,4 @@ The data for this dataset is scraped from [PCPartPicker](https://pcpartpicker.co
 
 There are currently 39,810 total items in this dataset.
 
-> Note: By running the scraper yourself, you *will* get blocked from using PCPartPicker. Unfortunately, I learned this the hard way. If you absolutely need to run the scraper yourself for some reason, use a proxy.
+> Note: Do not run the scraper without having a proxy enabled! You *will* get blocked from accessing PCPartPicker. (I learned this the hard way!)

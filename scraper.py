@@ -81,11 +81,27 @@ class Scraper:
 
             bs4 = self._bs4(html_unescaped)
 
-            page_count = bs4.find("ul", class_="pagination").find_all("li")[-1].string
+            page_count = bs4.find(
+                "ul", class_="pagination"
+            ).find_all("li")[-1].string
 
-            categories = [self._json_safe(c.find("h6", class_="specLabel").string) for c in bs4.find("td", class_="td--nowrap").find_all_previous("td", class_="td__spec")]
+            page_categories = bs4.find(
+                "td", class_="td--nowrap"
+            ).find_all_previous("td", class_="td__spec")
 
-            self._scrape_queue.append({"url": url, "categories": [c for c in reversed(categories)], "page_count": int(page_count)})
+            category_text: lambda cat: self._json_safe(
+                cat.find("h6", class_="specLabel").string
+            )
+
+            categories = [category_text(c) for c in page_categories]
+
+            self._scrape_queue.append(
+                {
+                    "url": url,
+                    "categories": [c for c in reversed(categories)],
+                    "page_count": int(page_count)
+                }
+            )
 
     def _scrape(self) -> None:
         """
@@ -115,7 +131,9 @@ class Scraper:
 
                 _progress.update(1)
 
-                req = requests.get(scrapee["url"], params={"page": current_page})
+                req = requests.get(
+                    scrapee["url"], params={"page": current_page}
+                )
                 bs4 = self._bs4(self._unescape(req.text))
 
                 values = [

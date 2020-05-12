@@ -11,9 +11,8 @@ class Scraper:
     """
     Scrape data from PCPartPicker from given product `endpoints`.
 
-    Note that requests may hang for a while depending on how many
-    endpoints there are, and how many pages each of those endpoints
-    have.
+    Note that requests may hang for a while depending on how many endpoints
+    there are, and how many pages each of those endpoints have.
 
     Example: `/video-card`, `/cpu`, etc.
     """
@@ -25,16 +24,29 @@ class Scraper:
 
     _out = lambda self, *args: print(*args) if self.console else None
 
-    _chunker = lambda self, seq, size: (seq[pos:pos + size] for pos in range(0, len(seq), size))
+    _chunker = lambda self, seq, size: (
+        seq[pos:pos + size] for pos in range(0, len(seq), size)
+    )
 
-    def __init__(self, *endpoints: str, output_dir: str = "./data", console: bool = True) -> None:
-        assert not self._block_check(), "You are blocked from accessing PCPartPicker. Try using a proxy instead."
+    def __init__(
+        self,
+        *endpoints: str,
+        output_dir: str = "./data",
+        console: bool = True
+    ) -> None:
+        if not self._block_check():
+            raise Exception(
+                "You are blocked from accessing PCPartPicker."
+                "Try using a proxy instead."
+            )
 
         self.endpoints = endpoints
         self.output_dir = output_dir
         self.console = console
 
-        self._abs_endpoints = [self._BASE_URL + e + "/fetch" for e in self.endpoints]
+        self._abs_endpoints = [
+            self._BASE_URL + e + "/fetch" for e in self.endpoints
+        ]
         self._scrape_queue: List[Dict]
 
     def _block_check(self) -> bool:
@@ -49,10 +61,9 @@ class Scraper:
 
     def _create_scrape_queue(self) -> None:
         """
-        Validate the endpoint, create a dictionary for each endpoint
-        with its own text, page count (so we know know how many
-        pages to scrape), and categories, and finally append to
-        the scrape queue.
+        Validate the endpoint, create a dictionary for each endpoint with its
+        own text, page count (so we know know how many pages to scrape), and
+        categories, and finally append to the scrape queue.
         """
         self._out("Creating scrape queue...\n")
 
@@ -78,11 +89,15 @@ class Scraper:
 
     def _scrape(self) -> None:
         """
-        Get the data from our generated scrape queue, scrape the
-        HTML and output it.
+        Get the data from our generated scrape queue, scrape the HTML and
+        output it.
         """
         # We need a queue in order to scrape!
-        assert self._scrape_queue, "Scrape queue does not exist. Have any valid endpoints been specified?"
+        if not self._scrape_queue:
+            raise Exception(
+                "Scrape queue does not exist. Have any valid endpoints been"
+                "specified?"
+            )
 
         start_all_time = time.time()
 
@@ -103,21 +118,31 @@ class Scraper:
                 req = requests.get(scrapee["url"], params={"page": current_page})
                 bs4 = self._bs4(self._unescape(req.text))
 
-                values = [l.find_next_sibling(text=True) for l in bs4.find_all("h6", class_="specLabel")]
+                values = [
+                    l.find_next_sibling(text=True) for l in bs4.find_all(
+                        "h6", class_="specLabel"
+                    )
+                ]
 
                 categories = scrapee["categories"]
 
                 for val_group in self._chunker(values, len(categories)):
                     page_items.append(dict(zip(categories, val_group)))
 
-                # We have all of the category values, but still don't
-                # have the name and price.
-                names = [w.find("p").string for w in bs4.find_all(class_="td__nameWrapper")]
-                prices = [w.find(text=True) for w in bs4.find_all(class_="td__price")]
+                # We have all of the category values, but still don't have the
+                # name and price.
+                names = [
+                    w.find("p").string for w in bs4.find_all(
+                        class_="td__nameWrapper"
+                    )
+                ]
+                prices = [
+                    w.find(text=True) for w in bs4.find_all(class_="td__price")
+                ]
 
                 for i, item in enumerate(page_items):
-                    # If there isn't a price to show, it will be "Add".
-                    # We don't want to show that.
+                    # If there isn't a price to show, it will be "Add". We
+                    # don't want to show that.
                     price = prices[i] if prices[i] != "Add" else None
 
                     item.update({"name": names[i], "price": price})
@@ -131,10 +156,16 @@ class Scraper:
 
             end_time = time.time() - start_time
 
-            self._out(f"Finished scraping {str(len(items))} items from {scrapee['url']} in {str(round(end_time, 3))}s")
+            self._out(
+                f"Finished scraping {str(len(items))} items from"
+                f"{scrapee['url']} in {str(round(end_time, 3))}s"
+            )
 
             if not os.path.exists(self.output_dir):
-                self._out(f"Output directory '{self.output_dir}' does not exist.", "Creating it...")
+                self._out(
+                    f"Output directory '{self.output_dir}' does not exist.",
+                    "Creating it..."
+                )
                 os.mkdir(self.output_dir)
 
             json_out = json.dumps(items)
@@ -150,7 +181,10 @@ class Scraper:
 
         end_all_time = time.time() - start_all_time
 
-        self._out(f"Finished scraping {str(len(self.endpoints))} endpoint(s) in {str(end_all_time // 60)}m ({str(round(end_all_time, 3))}s)")
+        self._out(
+            f"Finished scraping {str(len(self.endpoints))} endpoint(s) in "
+            f"{str(end_all_time // 60)}m ({str(round(end_all_time, 3))}s)"
+        )
 
     def run(self) -> None:
         """

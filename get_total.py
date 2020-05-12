@@ -13,7 +13,6 @@ for data_file in os.listdir("./data"):
     with open(path, "r") as f:
         data = json.loads(f.read())
 
-        for item in data:
-            total += 1
+        total += len(data)
 
 print(total)
